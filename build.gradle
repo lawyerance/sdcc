@@ -1,0 +1,102 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version "3.2.5"
+    id 'io.spring.dependency-management' version '1.1.4'
+
+    id 'java-library'
+    id 'idea'
+}
+
+group = 'com.honing.sdcc'
+version = '1.0.0-SNAPSHOT'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+idea {
+    module {
+        downloadJavadoc = true
+        downloadSources = true
+    }
+}
+
+
+repositories {
+    mavenCentral()
+
+    mavenLocal()
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-autoconfigure-processor'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    implementation 'org.springframework.boot:spring-boot-starter-cache'
+    implementation 'org.springframework.retry:spring-retry'
+
+    compileOnly("org.projectlombok:lombok:${lombokVersion}")
+    annotationProcessor("org.projectlombok:lombok:${lombokVersion}")
+
+    implementation("com.github.ben-manes.caffeine:caffeine:${caffeineVersion}")
+
+    implementation("org.springframework.boot:spring-boot-starter-data-redis")
+
+//    implementation("org.apache.httpcomponents.client5:httpclient5:5.3.1")
+
+}
+
+bootRun {
+    systemProperty("spring.config.additional-location", "file://${projectDir}/src/main/resources/application-cluster.yaml")
+//    args("--spring.config.additional-location=file://${projectDir}/src/main/resources/application-standalone.yaml")
+
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = "UTF-8"
+}
+
+tasks.named('jar') {
+    manifest {
+        attributes('Implementation-Title': project.name,
+                'Implementation-Version': project.version)
+    }
+
+    // Remove `plain` postfix from jar file name
+    archiveClassifier.set("")
+
+    exclude("*.yaml", "*.xml")
+}
+
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+tasks.register("release", Zip) {
+    dependsOn("jar")
+    //压缩包名称
+    archiveFileName = "${project.name}.zip"
+
+
+    into('bin') {
+        from("${projectDir}/scripts")
+        fileMode 0755
+    }
+    into('libs') {
+        from configurations.runtimeClasspath
+
+        from layout.getBuildDirectory().dir("libs")
+    }
+
+    into('config') {
+        from("${projectDir}/src/main/resources/")
+        include("*.yaml", "*.xml")
+    }
+
+    from("README.adoc")
+}
+
+

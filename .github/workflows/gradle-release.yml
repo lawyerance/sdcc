@@ -1,0 +1,44 @@
+name: Release with Gradle
+
+on:
+  push:
+    tags: [ "v*" ]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      # Configure Gradle for optimal use in GitHub Actions, including caching of downloaded dependencies.
+      # See: https://github.com/gradle/actions/blob/main/setup-gradle/README.md
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@af1da67850ed9a4cedd57bfd976089dd991e2582 # v4.0.0
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Build with Gradle Wrapper
+        run: ./gradlew clean release
+
+      - name: Create Release and Upload Binary Files
+        uses: softprops/action-gh-release@v2.0.8
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          token: ${{ secrets.ACCESS_TOKEN }}
+          tag_name: ${{ github.ref_name }}
+          body: release_${{ github.ref_name }}
+          draft: false
+          prerelease: false
+#          name: latest
+#          make_latest: true
+          files: |
+            build/distributions/sdcc.zip
